@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask Suspense Example</title>
+    <script>
+        window.__replace_suspense__ = (id, html) => {
+            console.log(`Received suspense block ${id}`)
+            document.getElementById(id).outerHTML = html;
+        };
+    </script>
+</head>
+<body>
+    <h1>Flask Suspense Example</h1>
+    <hr>
+    {% suspense %}
+        {{ data }}
+    {% fallback %}
+        <p>Loading...</p>
+    {% endsuspense %}
+    <hr>
+    <p>This is a simple example of using Flask Suspense.</p>
+</body>
+</html>
