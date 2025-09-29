@@ -52,10 +52,8 @@ You can also display a loading message:
 > The `{% suspense %}` block does not require the use of `@defer` loaders. It will simply delay
 > the rendering of its content to the end of the template.
 
-> [!WARNING]
-> Using `Flask.render_template()` will not render the suspense blocks
-
-You can disable suspense by passing `_suspense_disabled=True` to `render_template()`.
+> [!TIP]
+> Using `Flask.render_template()` will work as usual, suspense blocks will not be suspensed and rendered immediatly in place
 
 > [!TIP]
 > `flask_suspense.stream_template()` is also available
@@ -87,9 +85,11 @@ A loading div will be inserted in place of your suspense block. This div has a `
 
 When rendering, `{% suspense %}` blocks are converted to macros and replaced by a loading div at the location they have been used.
 
-The template is rendered in full first, without calling the suspense macros. It is sent back to the client.
+The template is rendered in full first, without calling the suspense macros. It is sent back to the client. While the template is rendered, suspense blocks "register" themselves in the current rendering context.
 
-Suspense macros are then called and their results are sent back wrapped in script tags that replace the loaders.
+"Registered" suspense macros are then called and their results are sent back wrapped in script tags that replace the loaders.
+
+Registering macros allows us to catch the template they are defined in. This enables using suspense in includes as well.
 
 `@defer` loaders ensures that the data loading will only start when the object is called as part of the macro, at the end of the stream.
 
