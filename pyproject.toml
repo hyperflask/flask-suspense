@@ -1,6 +1,6 @@
 [project]
 name = "flask-suspense"
-version = "0.2.0"
+version = "0.3.0"
 description = "Display loaders without requiring AJAX"
 authors = [
     { name = "Maxime Bouroumeau-Fuseau", email = "maxime.bouroumeau@gmail.com" }

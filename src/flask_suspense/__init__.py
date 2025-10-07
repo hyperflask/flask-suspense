@@ -1,7 +1,7 @@
 from jinja2 import nodes as jinja_nodes
 from jinja2.ext import Extension
 from flask import current_app, stream_with_context, render_template as flask_render_template, stream_template as flask_stream_template, g
-from lazy_object_proxy import Proxy as defer
+from lazy_object_proxy import Proxy
 from blinker import Namespace
 import uuid
 import inspect
@@ -43,6 +43,7 @@ def render_template(template_name_or_list, **context):
     g.suspense_enabled = True
     g.suspense_macros = {} # we use g as we want the variable to be accessible across all templates (including inside macros included from other templates)
     html = flask_render_template(template, **context)
+    g.suspense_enabled = False
     if not g.suspense_macros:
         return html
     return make_suspense_response(html, template, saved_context, g.suspense_macros)
@@ -71,6 +72,8 @@ def make_suspense_response(rv, template, context, suspense_macros):
             if data:
                 yield data
 
+        g.suspense_enabled = False # needed because streaming won't have set it to false
+
         # call suspense macros that were registered in the rendering phase
         # these macros can come from different templates
         for macro_template, (ctx, macros) in suspense_macros.items():
@@ -82,7 +85,11 @@ def make_suspense_response(rv, template, context, suspense_macros):
             if data:
                 yield data
 
-    return stream()
+    return stream(), {"x-suspense": "1"}
+
+
+def defer(func, *args, **kwargs):
+    return Proxy(lambda: func(*args, **kwargs))
 
 
 class SuspenseExtension(Extension):
@@ -141,7 +148,7 @@ class SuspenseExtension(Extension):
         return f"<div id=\"suspense-{id}\" class=\"suspense-loader\">{body}</div>"
     
     def render_register(self, id):
-        return "{% if g.suspense_macros is defined %}{% register_suspense_macro(g.suspense_macros, 'suspense_" + id + "') %}{% endif %}"
+        return "{% if g.suspense_enabled and g.suspense_macros is defined %}{% register_suspense_macro(g.suspense_macros, 'suspense_" + id + "') %}{% endif %}"
 
     def render_suspense_replace(self, id, body):
         return f"(window.__replace_suspense__ || ((id, html) => document.getElementById(id).outerHTML = html))(\"suspense-{id}\", `{body}`)"
@@ -153,7 +160,6 @@ class SuspenseExtension(Extension):
         return jinja_nodes.Output([self.call_method("register_suspense_macro", [context] + args, kwargs, lineno=lineno)])
     
     def register_suspense_macro(self, ctx, macros_registry, macro_name):
-        current_app.logger.debug(("Registering suspense macro", ctx.name, macro_name))
         # register the template name and the full ctx for later rendering
         macros_registry.setdefault(ctx.name, [ctx.get_all(), []])[1].append(macro_name)
         return ""
